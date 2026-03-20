@@ -1,0 +1,193 @@
+/* Portfolio Project Pages */
+
+.project-showcase {
+    background: var(--bg-card);
+    border-radius: 16px !important;
+    border: 1px solid var(--border) !important;
+    padding: 2rem !important;
+    transition: all 0.3s ease !important;
+}
+
+.project-showcase:hover {
+    border-color: var(--primary) !important;
+    box-shadow: var(--shadow-sm) !important;
+}
+
+.project-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--heading) !important;
+}
+
+.project-subtitle {
+    color: var(--secondary) !important;
+    font-size: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.project-desc {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+    flex: 1;
+}
+
+.tech-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)) !important;
+    gap: 0.5rem !important;
+    margin-bottom: 1.5rem !important;
+}
+
+.tech-badge {
+    background: var(--bg-tertiary) !important;
+    border: 1px solid var(--border) !important;
+    padding: 0.4rem 0.8rem !important;
+    border-radius: 20px !important;
+    font-size: 0.75rem;
+    font-weight: 500;
+    transition: all 0.2s ease !important;
+}
+
+.tech-badge:hover {
+    background: var(--primary) !important;
+    color: #000 !important;
+    border-color: var(--primary) !important;
+}
+
+.project-links {
+    display: flex !important;
+    gap: 0.75rem !important;
+    flex-wrap: wrap;
+    margin-top: auto;
+}
+
+.repo-btn {
+    padding: 0.5rem 1rem !important;
+    border-radius: 8px !important;
+    font-size: 0.9rem !important;
+    font-weight: 500 !important;
+    transition: all 0.2s ease !important;
+    text-decoration: none !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+}
+
+.repo-btn:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: var(--shadow-sm) !important;
+}
+
+.repo-github {
+    background: var(--primary) !important;
+    color: #fff !important;
+}
+
+.repo-github:hover {
+    background: var(--primary-dark) !important;
+}
+
+.repo-link {
+    background: var(--bg-tertiary) !important;
+    color: var(--secondary) !important;
+}
+
+.repo-link:hover {
+    background: var(--bg-secondary) !important;
+    color: var(--heading) !important;
+}
+
+/* Project Image */
+.project-image-wrapper {
+    margin-bottom: 1rem;
+}
+
+.project-image {
+    border-radius: 12px !important;
+    overflow: hidden !important;
+    border: 1px solid var(--border) !important;
+}
+
+.project-screenshot {
+    width: 100% !important;
+    height: auto !important;
+    display: block !important;
+    transition: transform 0.3s ease !important;
+}
+
+.project-image-wrapper:hover .project-screenshot {
+    transform: scale(1.02) !important;
+}
+
+/* Project Tags/Categories */
+.project-meta {
+    display: flex !important;
+    gap: 0.5rem !important;
+    flex-wrap: wrap;
+    margin-bottom: 1rem !important;
+}
+
+.project-tag {
+    background: var(--bg-tertiary) !important;
+    color: var(--secondary) !important;
+    padding: 0.25rem 0.6rem !important;
+    border-radius: 6px !important;
+    font-size: 0.75rem !important;
+    border: none !important;
+}
+
+/* Project Stats */
+.project-stats {
+    display: flex !important;
+    gap: 1.5rem !important;
+    margin-top: 1rem !important;
+    padding-top: 1rem !important;
+    border-top: 1px solid var(--border) !important;
+    flex-wrap: wrap !important;
+}
+
+.stat-item {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+}
+
+.stat-value {
+    font-size: 1.25rem !important;
+    font-weight: 600 !important;
+    color: var(--heading) !important;
+}
+
+.stat-label {
+    font-size: 0.75rem !important;
+    color: var(--secondary) !important;
+}
+
+/* Mobile Adjustments */
+@media (max-width: 768px) {
+    .project-showcase {
+        padding: 1.5rem !important;
+    }
+    
+    .project-title {
+        font-size: 1.25rem !important;
+    }
+    
+    .project-image {
+        height: 280px !important;
+    }
+    
+    .tech-grid {
+        grid-template-columns: repeat(3, 1fr) !important;
+    }
+    
+    .project-stats {
+        gap: 1rem !important;
+    }
+    
+    .stat-item {
+        min-width: 45%;
+    }
+}

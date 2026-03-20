@@ -1,0 +1,83 @@
+/* Services Section Styles */
+.services {
+  padding: 5rem 0;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+}
+
+.service-card {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 2.5rem;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+  height: 100%;
+  min-height: 350px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.service-card:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-10px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.service-card.holder {
+  background: linear-gradient(135deg, rgba(92, 125, 23, 0.2), rgba(92, 125, 23, 0.15));
+  border-color: rgba(92, 125, 23, 0.8);
+}
+
+.service-card h3 {
+  font-size: 1.8rem;
+  margin-bottom: 1rem;
+  color: #fff;
+}
+
+.service-card p {
+  color: #ccc;
+  line-height: 1.6;
+  max-width: 400px;
+}
+
+.service-card .icon {
+  font-size: 3.5rem;
+  margin-bottom: 1.5rem;
+  display: block;
+  animation: float 3s ease-in-out infinite;
+}
+
+.service-card .icon:hover {
+  animation-play-state: paused;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* Service Progress */
+.service-card .progress {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  margin-top: 1rem;
+  padding: 1rem;
+}
+
+.service-card .progress .icon {
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.service-card .progress .label {
+  color: #888;
+  font-size: 0.85rem;
+}

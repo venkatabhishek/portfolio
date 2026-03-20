@@ -1,36 +1,201 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Portfolio - Next.js App
 
-## Getting Started
+A modern, production-ready portfolio website built with Next.js 16, featuring financial analytics integration with Plaid SDK and a professional Shadcn/ui design system.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## 🚀 Features
+
+- **Next.js 16** App Router with server/client component optimization
+- **Shadcn/ui** Design system with accessible, customizable UI components
+- **Tailwind CSS v4** Modern utility-first styling with JIT compiler
+- **Radix UI** Accessible component primitives
+- **Luce icons** Beautiful, scalable SVG icon library
+- **Plaid SDK** Financial API integration for portfolio tracking
+- **Environment-based** Configuration with .env support
+- **TypeScript** Full type safety throughout the application
+- **ESLint** Code quality and best practices enforcement
+
+---
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────┐
+│         Next.js App Router              │
+├─────────────────────────────────────────┤
+│  Server Components  │  Client Components │
+│  Static Generation  │  Dynamic Rendering │
+├─────────────────────────────────────────┤
+│  Plaid API Integration Layer            │
+│  Custom UI Component Library            │
+├─────────────────────────────────────────┤
+│  Tailwind CSS v4 + Shadcn/ui            │
+└─────────────────────────────────────────┘
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Key Architectural Decisions
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Server Components:** Default for better TTI (Time to Interact)
+- **Client Components:** Used only where interactivity is needed (WebSockets, state management)
+- **Type Safety:** Full TypeScript coverage for maintainability
+- **Component Reusability:** Shadcn/ui components for consistent design system
+- **Financial Data:** Plaid SDK for portfolio analytics
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## 🛠️ Tech Stack
 
-To learn more about Next.js, take a look at the following resources:
+| Category | Technology | Version |
+|----------|------------|---------|
+| **Framework** | Next.js | 16.2.0 |
+| **Library** | React | 19.2.4 |
+| **CSS** | Tailwind CSS | 4.x |
+| **UI Components** | Shadcn/ui | 0.0.4 |
+| **Primitives** | Radix UI | 1.4.3 |
+| **Icons** | Lucide React | 0.577.0 |
+| **TypeScript** | TypeScript | 5.x |
+| **Linter** | ESLint | 9.x |
+| **Finance API** | Plaid SDK | 41.4.0 |
+| **Tooling** | dotenv | 17.3.1 |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 📦 Core Dependencies
 
-## Deploy on Vercel
+### Framework & Runtime
+- `next` - Next.js framework for production apps
+- `react` & `react-dom` - React core and DOM rendering
+- `@types/*` - TypeScript definitions for Node, React, React DOM
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Styling & UI
+- `tailwindcss` - Tailwind v4 utility-first CSS framework
+- `@shadcn/ui` - Design system component collection
+- `lucide-react` - Scalable icon library
+- `radix-ui` - Accessible UI primitives
+- `class-variance-authority` - CSS class utility
+- `clsx` - Class merge utility
+- `tailwind-merge` - Conflict resolution
+- `tw-animate-css` - Animation utilities
+- `dotenv` - Environment variable loader
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Development & Tooling
+- `eslint` - ESLint linter
+- `eslint-config-next` - Next.js ESLint configuration
+- `typescript` - TypeScript compiler
+
+### Additional
+- `node-fetch` - Fetch API for Node environment
+- `plaid` - Plaid financial services SDK
+
+---
+
+## 🚦 Getting Started
+
+### Prerequisites
+
+- Node.js 20+ LTS
+- npm, yarn, or pnpm
+
+### Installation
+
+```bash
+# Install dependencies
+npm install
+
+# Set environment variables
+cp .env.example .env
+# Edit .env with your configuration
+
+# Run development server
+npm run dev
+```
+
+### Build for Production
+
+```bash
+npm run build
+npm start
+```
+
+---
+
+## 📁 Project Structure
+
+```
+portfolio/
+├── app/                 # Next.js App Router
+│   ├── layout.tsx      # Root layout
+│   ├── page.tsx        # Home page
+│   └── ...             # Route pages
+├── components/         # Reusable UI components
+├── lib/                # Utilities and helpers
+├── public/             # Static assets
+├── styles/             # Global styles
+├── .env                # Environment variables
+├── package.json        # Dependencies
+├── tailwind.config.ts  # Tailwind configuration
+└── README.md           # This file
+```
+
+---
+
+## 🎯 Usage
+
+### Server Components (Default)
+Most pages render as server components for optimal performance. They have direct access to `fetch` and database queries.
+
+### Client Components
+Wrapped in `<React.StrictMode>` with `"use client"` directive for:
+- Interactive functionality
+- Browser APIs (hooks, DOM, window)
+- State management
+
+### UI Customization
+All Shadcn/ui components are customizable via props and CSS variables:
+
+```tsx
+// Example: Custom button with Tailwind
+<button className="btn-primary">
+  Click Me
+</button>
+```
+
+---
+
+## 🔐 Security
+
+- **Environment Variables:** Sensitive data in `.env` (gitignored)
+- **TypeScript:** Full type safety prevents runtime errors
+- **ESLint:** Enforces secure coding patterns
+- **Next.js:** Built-in security best practices
+
+---
+
+## 📊 Performance
+
+Optimized through:
+- Server-side rendering (SSR)
+- Static generation (SSG)
+- Image optimization
+- Tree-shaking unused code
+- Lazy loading components
+
+---
+
+## 📝 License
+
+MIT License - Feel free to use this project in your own applications.
+
+---
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a Pull Request
+
+---
+
+**Built with ❤️ using Next.js + Shadcn/ui + Tailwind CSS**

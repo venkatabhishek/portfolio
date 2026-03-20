@@ -1,3 +1,8 @@
+/**
+ * Plaid API client wrapper
+ * Handles authentication and transaction endpoints
+ */
+
 import Plaid from 'plaid';
 
 export class PlaidClient {
