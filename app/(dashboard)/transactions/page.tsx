@@ -1,64 +1,58 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { TransactionsTable } from '@/components/TransactionsTable';
+import { Loader2, RefreshCw } from 'lucide-react';
 
 type Transaction = {
+  id: string;
   account_id: string;
-  account_name?: string;
-  name?: string;
-  merchant_name?: string;
-  category?: string[];
+  plaid_transaction_id: string;
   amount: number;
   date: string;
-  pending?: boolean;
-};
-
-type Account = {
-  account_id: string;
-  name: string;
-  subtype: string;
-  balances: {
-    current: number;
-    available: number | null;
-    iso_currency_code: string;
-  };
+  name: string | null;
+  merchant_name: string | null;
+  category: string[] | null;
+  pending: boolean;
+  account: {
+    id: string;
+    name: string;
+    plaid_account_id: string;
+  } | null;
 };
 
 type ApiResponse = {
   transactions: Transaction[];
-  accounts: Account[];
-  grouped: any[];
   summary: {
     totalDeposits: number;
     totalWithdrawals: number;
   };
+  error?: string;
 };
 
 export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [grouped, setGrouped] = useState<any[]>([]);
-  const [summary, setSummary] = useState<any>({ totalDeposits: 0, totalWithdrawals: 0 });
+  const [summary, setSummary] = useState({ totalDeposits: 0, totalWithdrawals: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const fetchTransactions = async () => {
     try {
-      setLoading(true);
       setError(null);
-      
       const res = await fetch('/api/transactions');
       const data: ApiResponse = await res.json();
 
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
       setTransactions(data.transactions || []);
-      setAccounts(data.accounts || []);
-      setGrouped(data.grouped || []);
       setSummary(data.summary || { totalDeposits: 0, totalWithdrawals: 0 });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load transactions');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -66,13 +60,30 @@ export default function TransactionsPage() {
     fetchTransactions();
   }, []);
 
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchTransactions();
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(Math.abs(amount));
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-          <p className="text-sm text-muted-foreground">Loading transactions...</p>
-        </div>
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -82,7 +93,7 @@ export default function TransactionsPage() {
       <div className="rounded-lg border border-destructive bg-destructive/10 p-6 text-center">
         <p className="text-destructive font-medium">{error}</p>
         <button
-          onClick={fetchTransactions}
+          onClick={handleRefresh}
           className="mt-4 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
         >
           Retry
@@ -93,23 +104,33 @@ export default function TransactionsPage() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="text-3xl font-semibold">Transactions</h1>
-        <p className="text-muted-foreground mt-1">View and manage your transaction history.</p>
+      <header className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-semibold">Transactions</h1>
+          <p className="text-muted-foreground mt-1">View and manage your transaction history.</p>
+        </div>
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-muted transition-colors"
+        >
+          <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+          {refreshing ? 'Refreshing...' : 'Refresh'}
+        </button>
       </header>
 
       <div className="grid gap-6 md:grid-cols-3">
         <div className="rounded-lg border border-card bg-card p-6">
           <div className="text-sm text-muted-foreground">Total Deposits</div>
           <div className="text-2xl font-bold text-emerald-600 mt-2">
-            ${summary.totalDeposits.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+            {formatCurrency(summary.totalDeposits)}
           </div>
         </div>
 
         <div className="rounded-lg border border-card bg-card p-6">
           <div className="text-sm text-muted-foreground">Total Withdrawals</div>
           <div className="text-2xl font-bold text-rose-600 mt-2">
-            ${summary.totalWithdrawals.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+            {formatCurrency(summary.totalWithdrawals)}
           </div>
         </div>
 
@@ -119,35 +140,65 @@ export default function TransactionsPage() {
         </div>
       </div>
 
-      <TransactionsTable
-        transactions={transactions}
-        accounts={accounts}
-        onRefresh={fetchTransactions}
-      />
+      <div className="rounded-lg border border-border overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-muted">
+            <tr>
+              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Date</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Account</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Description</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Category</th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Amount</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {transactions.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                  No transactions found. Connect an account and refresh to see transactions.
+                </td>
+              </tr>
+            ) : (
+              transactions.map((tx) => (
+                <tr key={tx.id} className="hover:bg-muted/50 transition-colors">
+                  <td className="px-4 py-3 text-sm whitespace-nowrap">
+                    {formatDate(tx.date)}
+                  </td>
+                  <td className="px-4 py-3 text-sm">
+                    {tx.account?.name || 'Unknown'}
+                  </td>
+                  <td className="px-4 py-3 text-sm">
+                    {tx.merchant_name || tx.name || '-'}
+                  </td>
+                  <td className="px-4 py-3 text-sm">
+                    {tx.category?.[0] || '-'}
+                  </td>
+                  <td className="px-4 py-3 text-right text-sm font-medium">
+                    <span className={tx.amount < 0 ? 'text-emerald-600' : 'text-rose-600'}>
+                      {tx.amount < 0 ? '+' : '-'}{formatCurrency(tx.amount)}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-sm">
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                      tx.pending 
+                        ? 'bg-amber-100 text-amber-700' 
+                        : 'bg-emerald-100 text-emerald-700'
+                    }`}>
+                      {tx.pending ? 'Pending' : 'Posted'}
+                    </span>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
 
-      {grouped.length > 0 && (
-        <div className="rounded-lg border border-card p-4">
-          <h3 className="text-lg font-semibold mb-3">Monthly Overview</h3>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            {grouped.slice(0, 3).map((month: any) => (
-              <div key={month.month} className="rounded-lg border border-border bg-muted p-4">
-                <div className="text-sm font-medium text-muted-foreground">
-                  {new Date(month.month).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
-                </div>
-                <div className="mt-2 flex items-baseline gap-2">
-                  <span className="text-2xl font-bold text-emerald-600">
-                    +${month.deposits.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                  </span>
-                  <span className="text-2xl font-bold text-rose-600">
-                    -${month.withdrawals.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                  </span>
-                </div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  {month.transactions.length} transactions
-                </div>
-              </div>
-            ))}
-          </div>
+      {transactions.length > 0 && (
+        <div className="flex justify-between items-center text-sm text-muted-foreground">
+          <span>{transactions.length} transactions</span>
+          <span>Showing all transactions</span>
         </div>
       )}
     </div>

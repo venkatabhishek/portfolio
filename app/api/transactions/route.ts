@@ -1,106 +1,98 @@
-import { NextResponse } from 'next/server';
-import { plaidClient } from '@/lib/plaid';
+import { NextRequest, NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
 
-export const dynamic = 'force-dynamic';
-
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const accessToken = process.env.PLAID_ACCESS_TOKEN;
-
-    if (!accessToken) {
-      return NextResponse.json({
-        error: 'No access token configured',
-        accounts: [],
-        transactions: [],
-      });
-    }
-
-    const accountsResponse = await plaidClient.accountsGet({ access_token: accessToken });
-    const accounts = accountsResponse.data.accounts || [];
-
-    if (!accounts.length) {
-      return NextResponse.json({
-        error: 'No accounts found',
-        accounts: [],
-        transactions: [],
-      });
-    }
-
-    const allTransactions: any[] = [];
-    let hasMore = true;
-    let nextCursor: string | undefined = undefined;
-
-    while (hasMore) {
-      const response = await plaidClient.transactionsSync({
-        access_token: accessToken,
-        cursor: nextCursor,
-      });
-
-      const data = response.data;
-      allTransactions.push(...(data.added || []));
-      allTransactions.push(...(data.modified || []));
-
-      hasMore = data.has_more;
-      nextCursor = data.next_cursor;
-
-      if (allTransactions.length >= 100) {
-        break;
+    const response = NextResponse.next();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              request.cookies.set(name, value);
+              response.cookies.set(name, value, options);
+            });
+          },
+        },
       }
-    }
-
-    allTransactions.sort((a, b) =>
-      new Date(b.date || a.date).getTime() - new Date(a.date || b.date).getTime()
     );
 
-    const grouped = allTransactions.reduce((acc, tx) => {
-      const date = new Date(tx.date || tx.booked_datetime || tx.created_at);
-      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    const { data: { user } } = await supabase.auth.getUser();
 
-      if (!acc[key]) {
-        acc[key] = {
-          month: key,
-          transactions: [],
-          deposits: 0,
-          withdrawals: 0,
-        };
-      }
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-      acc[key].transactions.push(tx);
+    // Get URL params for filtering
+    const { searchParams } = new URL(request.url);
+    const from = searchParams.get('from');
+    const to = searchParams.get('to');
+    const accountId = searchParams.get('accountId');
+    const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 100);
 
-      if (tx.code) {
-        const code = tx.code.toLowerCase();
-        const depositCodes = ['credit', 'cash_deposited', 'interest', 'refund'];
-        const withdrawalCodes = ['debit', 'cash_withdrawal', 'transfer_out', 'payment'];
+    // Build query
+    let query = supabase
+      .from('transactions')
+      .select(`
+        *,
+        account:accounts(id, name, plaid_account_id)
+      `)
+      .order('date', { ascending: false })
+      .limit(limit);
 
-        if (depositCodes.some(c => code.includes(c))) {
-          acc[key].deposits += tx.amount || 0;
-        } else if (withdrawalCodes.some(c => code.includes(c))) {
-          acc[key].withdrawals += Math.abs(tx.amount || 0);
-        }
-      }
+    if (from) {
+      query = query.gte('date', from);
+    }
 
-      return acc;
-    }, {} as Record<string, any>);
+    if (to) {
+      query = query.lte('date', to);
+    }
+
+    if (accountId) {
+      query = query.eq('account_id', accountId);
+    }
+
+    const { data: transactions, error: transactionsError } = await query;
+
+    if (transactionsError) {
+      console.error('Error fetching transactions:', transactionsError);
+      return NextResponse.json(
+        { error: 'Failed to fetch transactions' },
+        { status: 500 }
+      );
+    }
+
+    // Get summary stats
+    const { data: allTransactions } = await supabase
+      .from('transactions')
+      .select('amount')
+      .gte('date', from || new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+
+    const totalDeposits = allTransactions
+      ?.filter((tx) => tx.amount < 0)
+      .reduce((sum, tx) => sum + Math.abs(tx.amount), 0) || 0;
+
+    const totalWithdrawals = allTransactions
+      ?.filter((tx) => tx.amount > 0)
+      .reduce((sum, tx) => sum + tx.amount, 0) || 0;
 
     return NextResponse.json({
-      accounts: accounts.map((a: any) => ({
-        account_id: a.account_id,
-        name: a.name,
-        subtype: a.subtype,
-        balances: a.balances,
-      })),
-      transactions: allTransactions,
-      grouped: Object.values(grouped),
+      transactions: transactions || [],
       summary: {
-        totalDeposits: Object.values(grouped).reduce((sum: number, m: any) => sum + m.deposits, 0),
-        totalWithdrawals: Object.values(grouped).reduce((sum: number, m: any) => sum + m.withdrawals, 0),
+        totalDeposits,
+        totalWithdrawals,
       },
     });
   } catch (error) {
     console.error('Error fetching transactions:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch transactions', details: String(error) },
-      { status: 500 },
+      { error: 'Failed to fetch transactions' },
+      { status: 500 }
     );
   }
 }

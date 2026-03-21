@@ -292,18 +292,21 @@ lib/
 - [x] Create auth middleware (`middleware.ts`)
 - [x] Create login page (`app/login/page.tsx`)
 - [x] Update sidebar for auth (sign out button)
-- [ ] Update API routes for session validation (TODO: add user auth checks to Plaid/account APIs)
 
 ### Phase 2: Plaid Integration
-- [ ] Implement link-token endpoint
-- [ ] Implement exchange endpoint
-- [ ] Add Plaid Link UI component
-- [ ] Create accounts page with connect/disconnect
+- [x] Implement link-token endpoint (`/api/plaid/link-token`)
+- [x] Implement exchange endpoint (`/api/plaid/exchange`)
+- [x] Add Plaid Link UI component (`components/plaid/PlaidLink.tsx`)
+- [x] Create accounts page with connect/disconnect
+- [x] Create `/api/accounts` endpoint with user session
+- [x] Create `/api/accounts/[id]/refresh` endpoint
+- [x] Create `/api/plaid/connections/[id]` delete endpoint
 
 ### Phase 3: Data & Sync
-- [ ] Implement transaction sync with cursor
-- [ ] Build transactions page with sorting/filtering
-- [ ] Add refresh functionality with 60-second cooldown
+- [x] Implement transaction sync with cursor (in exchange and refresh endpoints)
+- [x] Build transactions page with sorting/filtering
+- [x] Add refresh functionality
+- [ ] Add 60-second cooldown to refresh
 - [ ] Add 12-month retention policy / cleanup job
 
 ### Phase 4: Dashboard & Settings

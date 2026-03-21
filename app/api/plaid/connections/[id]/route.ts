@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
-export async function GET(request: NextRequest) {
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
+    const { id } = await params;
+
     const response = NextResponse.next();
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -28,30 +33,26 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: connections, error: connectionsError } = await supabase
+    // Delete connection (cascades to accounts and transactions due to foreign key)
+    const { error } = await supabase
       .from('plaid_connections')
-      .select(`
-        *,
-        accounts (
-          *
-        )
-      `)
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+      .delete()
+      .eq('id', id)
+      .eq('user_id', user.id);
 
-    if (connectionsError) {
-      console.error('Error fetching connections:', connectionsError);
+    if (error) {
+      console.error('Error deleting connection:', error);
       return NextResponse.json(
-        { error: 'Failed to fetch connections' },
+        { error: 'Failed to delete connection' },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ connections: connections || [] });
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error fetching connections:', error);
+    console.error('Error deleting connection:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch connections' },
+      { error: 'Failed to delete connection' },
       { status: 500 }
     );
   }
