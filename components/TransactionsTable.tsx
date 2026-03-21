@@ -5,16 +5,13 @@ import { ArrowDown, ArrowUp, Loader2, Filter } from 'lucide-react';
 
 interface Transaction {
   account_id: string;
-  account_name: string;
-  payee_name: string;
-  category_name: string;
-  raw_amount: number;
-  net_amount: number;
-  status: 'posted' | 'pending';
-  date: string;
-  code?: string;
-  category_id?: string;
+  account_name?: string;
+  name?: string;
   merchant_name?: string;
+  category?: string[];
+  amount: number;
+  date: string;
+  pending?: boolean;
 }
 
 interface TransactionsTableProps {
@@ -110,23 +107,23 @@ export function TransactionsTable({ transactions, accounts, onRefresh }: Transac
                   {tx.account_name || accountMap.get(tx.account_id) || tx.account_id}
                 </td>
                 <td className="px-4 py-3 text-sm">
-                  {tx.payee_name || tx.merchant_name || '-'}
+                  {tx.merchant_name || tx.name || '-'}
                 </td>
                 <td className="px-4 py-3 text-sm">
-                  {tx.category_name || tx.category_id || '-'}
+                  {tx.category?.[0] || '-'}
                 </td>
                 <td className="px-4 py-3 text-right text-sm font-medium">
-                  <span className={tx.raw_amount > 0 ? 'text-emerald-600' : 'text-rose-600'}>
-                    {tx.raw_amount > 0 ? '+' : ''}${Math.abs(tx.raw_amount).toFixed(2)}
+                  <span className={tx.amount > 0 ? 'text-emerald-600' : 'text-rose-600'}>
+                    {tx.amount > 0 ? '+' : ''}${Math.abs(tx.amount).toFixed(2)}
                   </span>
                 </td>
                 <td className="px-4 py-3 text-sm">
                   <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                    tx.status === 'posted' 
-                      ? 'bg-emerald-100 text-emerald-700' 
-                      : 'bg-amber-100 text-amber-700'
+                    tx.pending 
+                      ? 'bg-amber-100 text-amber-700' 
+                      : 'bg-emerald-100 text-emerald-700'
                   }`}>
-                    {tx.status === 'posted' ? '✓' : '⏳'} {tx.status}
+                    {tx.pending ? '⏳' : '✓'} {tx.pending ? 'Pending' : 'Posted'}
                   </span>
                 </td>
               </tr>

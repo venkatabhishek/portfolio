@@ -5,16 +5,13 @@ import { TransactionsTable } from '@/components/TransactionsTable';
 
 type Transaction = {
   account_id: string;
-  account_name: string;
-  payee_name: string;
-  category_name: string;
-  raw_amount: number;
-  net_amount: number;
-  status: string;
-  date: string;
-  code?: string;
-  category_id?: string;
+  account_name?: string;
+  name?: string;
   merchant_name?: string;
+  category?: string[];
+  amount: number;
+  date: string;
+  pending?: boolean;
 };
 
 type Account = {

@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import Sidebar from "@/components/Sidebar";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -26,10 +25,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full bg-background text-foreground">
-        <div className="min-h-screen flex">
-          <Sidebar />
-          <main className="flex-1 p-8">{children}</main>
-        </div>
+        {children}
       </body>
     </html>
   );

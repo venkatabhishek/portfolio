@@ -1,84 +1,40 @@
-import Plaid from 'plaid';
+import { Configuration, PlaidApi, PlaidEnvironments } from 'plaid';
 
-export class PlaidClient {
-  private client: Plaid;
+const { PLAID_CLIENT_ID, PLAID_SECRET } = process.env;
 
-  constructor(environment: string = 'sandbox') {
-    const secret = process.env.PLAID_SECRET || '';
-    const clientId = process.env.PLAID_CLIENT_ID || '';
-    
-    this.client = new Plaid.Client({
-      clientId: clientId,
-      environment: environment,
-      secret: secret,
-    });
-  }
+const configuration = new Configuration({
+  basePath: PlaidEnvironments.sandbox,
+  baseOptions: {
+    headers: {
+      'PLAID-CLIENT-ID': PLAID_CLIENT_ID,
+      'PLAID-SECRET': PLAID_SECRET,
+    },
+  },
+});
 
-  async getTransactions(accountId: string, options?: {
-    count?: number;
-    offset?: number;
-    transactionTypes?: string[];
-  }) {
-    try {
-      const response = await this.client.transactions.get({
-        access_token: process.env.PLAID_ACCESS_TOKEN || '',
-        account_ids: [accountId],
-        count: options?.count || 25,
-        offset: options?.offset || 0,
-        transaction_types: options?.transactionTypes || undefined,
-      });
+export const plaidClient = new PlaidApi(configuration);
 
-      return response;
-    } catch (error) {
-      console.error('Error fetching transactions:', error);
-      throw error;
-    }
-  }
+export const exchangePublicToken = async ({ publicToken }: { publicToken: string }) => {
+  const response = await plaidClient.itemPublicTokenExchange({ public_token: publicToken });
+  return response.data;
+};
 
-  async getBalance(accountId: string) {
-    try {
-      const response = await this.client.accounts.get({
-        access_token: process.env.PLAID_ACCESS_TOKEN || '',
-        account_ids: [accountId],
-      });
+export const getAccountAssets = async (institutionId: string) => {
+  const response = await plaidClient.assetReportGet({ asset_report_token: institutionId });
+  return response.data;
+};
 
-      return response;
-    } catch (error) {
-      console.error('Error fetching balance:', error);
-      throw error;
-    }
-  }
+export const getBalance = async (institutionId: string) => {
+  const response = await plaidClient.accountsBalanceGet({ access_token: institutionId });
+  return response.data;
+};
 
-  async getAccounts() {
-    try {
-      const response = await this.client.accounts.get({
-        access_token: process.env.PLAID_ACCESS_TOKEN || '',
-      });
+export const getTransactions = async (institutionId: string, cursor?: string) => {
+  const response = await plaidClient.transactionsSync({ access_token: institutionId, cursor });
+  return response.data;
+};
 
-      return response;
-    } catch (error) {
-      console.error('Error fetching accounts:', error);
-      throw error;
-    }
-  }
-
-  async getTransactionCategories(accountId: string) {
-    try {
-      const response = await this.client.identity.getTransactionCategories({
-        access_token: process.env.PLAID_ACCESS_TOKEN || '',
-        account_ids: [accountId],
-      });
-
-      return response;
-    } catch (error) {
-      console.error('Error fetching transaction categories:', error);
-      throw error;
-    }
-  }
-
-  getClient() {
-    return this.client;
-  }
-}
-
-export default PlaidClient;
+export const getAuthorizedDataSources = async (accessToken: string) => {
+  const response = await plaidClient.accountsGet({ access_token: accessToken });
+  return response.data;
+};

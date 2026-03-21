@@ -1,12 +1,44 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import React from "react";
-import { Home, CreditCard, Repeat, Settings } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import React, { useEffect, useState } from "react";
+import { Home, CreditCard, Repeat, Settings, LogOut, Loader2 } from "lucide-react";
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
+type User = {
+  email?: string;
+  user_metadata?: {
+    name?: string;
+    avatar_url?: string;
+  };
+};
 
 export default function Sidebar() {
   const pathname = usePathname() || "/";
+  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+      setLoading(false);
+    };
+    getUser();
+  }, []);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    router.push('/login');
+    router.refresh();
+  };
 
   const items = [
     { href: "/", label: "Dashboard", icon: <Home size={18} /> },
@@ -21,7 +53,16 @@ export default function Sidebar() {
         <div className="text-2xl font-semibold text-sidebar-primary-foreground">
           Finance Dashboard
         </div>
-        <div className="text-sm text-sidebar-foreground/80 mt-1">Welcome back</div>
+        {loading ? (
+          <div className="flex items-center gap-2 mt-1">
+            <Loader2 className="w-3 h-3 animate-spin text-sidebar-foreground/80" />
+            <div className="text-sm text-sidebar-foreground/80">Loading...</div>
+          </div>
+        ) : user ? (
+          <div className="text-sm text-sidebar-foreground/80 mt-1 truncate">
+            {user.user_metadata?.name || user.email}
+          </div>
+        ) : null}
       </div>
 
       <nav className="flex-1">
@@ -48,7 +89,17 @@ export default function Sidebar() {
         </ul>
       </nav>
 
-      <div className="mt-6 text-xs text-sidebar-foreground/70">© 2026 Finance Dashboard</div>
+      <div className="mt-6 pt-6 border-t border-sidebar-border">
+        <button
+          onClick={handleSignOut}
+          className="flex items-center gap-3 px-3 py-2 w-full text-sidebar-foreground hover:bg-muted/50 rounded-md transition-colors"
+        >
+          <LogOut size={18} className="opacity-90" />
+          <span>Sign Out</span>
+        </button>
+      </div>
+
+      <div className="mt-4 text-xs text-sidebar-foreground/70">© 2026 Finance Dashboard</div>
     </aside>
   );
 }
