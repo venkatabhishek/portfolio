@@ -5,12 +5,36 @@ import { usePlaidLink, PlaidLinkOptions, PlaidLinkOnSuccess } from 'react-plaid-
 import { Loader2 } from 'lucide-react';
 
 type PlaidLinkProps = {
-  onSuccess: (publicToken: string, metadata: any) => void;
+  onSuccess: (publicToken: string, metadata: PlaidLinkMetadata) => void;
   onExit?: () => void;
   children?: React.ReactNode;
+  products?: PlaidProducts[];
 };
 
-export default function PlaidLink({ onSuccess, onExit, children }: PlaidLinkProps) {
+type PlaidProducts = 'transactions' | 'investments' | 'auth' | 'identity' | 'income' | 'assets';
+
+type PlaidLinkMetadata = {
+  institution?: {
+    name: string;
+    institution_id: string;
+  } | null;
+  accounts: Array<{
+    id: string;
+    name: string;
+    mask: string | null;
+    type: string;
+    subtype: string;
+  }>;
+};
+
+const defaultProducts: PlaidProducts[] = ['transactions'];
+
+export default function PlaidLink({ 
+  onSuccess, 
+  onExit, 
+  children, 
+  products = defaultProducts,
+}: PlaidLinkProps) {
   const [linkToken, setLinkToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -22,6 +46,8 @@ export default function PlaidLink({ onSuccess, onExit, children }: PlaidLinkProp
     try {
       const response = await fetch('/api/plaid/link-token', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ products }),
       });
 
       const data = await response.json();
@@ -36,7 +62,7 @@ export default function PlaidLink({ onSuccess, onExit, children }: PlaidLinkProp
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [products]);
 
   const handleOnSuccess: PlaidLinkOnSuccess = useCallback(
     (publicToken, metadata) => {
@@ -48,7 +74,7 @@ export default function PlaidLink({ onSuccess, onExit, children }: PlaidLinkProp
   const config: PlaidLinkOptions = {
     token: linkToken,
     onSuccess: handleOnSuccess,
-    onExit: (exitError, metadata) => {
+    onExit: (exitError) => {
       if (exitError) {
         console.error('Plaid exit error:', exitError);
       }

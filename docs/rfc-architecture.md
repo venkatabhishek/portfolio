@@ -234,6 +234,170 @@ With 5 connected accounts × ~100 transactions/month:
 
 **Note:** Data is only updated when user manually refreshes. This keeps infrastructure simple and within free tier limits.
 
+---
+
+## Investment Portfolio Feature
+
+### Overview
+
+Display read-only investment holdings including stocks, ETFs, options, and crypto from connected brokerage accounts.
+
+### Plaid Investments API
+
+Plaid provides investment data through the Investments product:
+
+| Endpoint | Purpose |
+|----------|---------|
+| `/investments/holdings/get` | Get current positions |
+| `/investments/transactions/get` | Get investment transactions (trades, dividends) |
+
+### Investment Data Model
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ investment_holdings                                        │
+├─────────────────────────────────────────────────────────────┤
+│ id UUID PRIMARY KEY                                       │
+│ connection_id UUID REFERENCES plaid_connections(id)        │
+│ security_id TEXT (Plaid security identifier)                │
+│ ticker_symbol TEXT                                         │
+│ security_name TEXT                                         │
+│ security_type TEXT (equity, etf, derivative, etc.)         │
+│ quantity DOUBLE                                            │
+│ institution_price DOUBLE                                   │
+│ institution_value DOUBLE                                   │
+│ cost_basis DOUBLE                                          │
+│ date_acquired TIMESTAMPTZ                                  │
+│ created_at TIMESTAMPTZ DEFAULT NOW()                      │
+│ updated_at TIMESTAMPTZ DEFAULT NOW()                       │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│ investment_securities (reference table)                     │
+├─────────────────────────────────────────────────────────────┤
+│ security_id TEXT PRIMARY KEY                               │
+│ ticker_symbol TEXT                                         │
+│ name TEXT                                                  │
+│ type TEXT                                                  │
+│ subtype TEXT                                               │
+│ close_price DOUBLE                                        │
+│ cusip TEXT                                                │
+│ isin TEXT                                                 │
+│ option_details JSONB (for options)                        │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Option Contract Details (JSONB)
+
+```json
+{
+  "type": "call",           // "call" or "put"
+  "strike_price": 150.00,
+  "expiration_date": "2025-06-21",
+  "shares_per_contract": 100
+}
+```
+
+### Portfolio Page Design
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│ Portfolio                                    [Connect Brokerage]  │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│ ┌────────────────┐ ┌────────────────┐ ┌────────────────┐         │
+│ │ Total Value    │ │ Day Change    │ │ Total Gain/Loss│         │
+│ │ $125,432.50    │ │ +$1,234.56    │ │ +$15,678.90    │         │
+│ │                │ │ (+0.99%)      │ │ (+14.28%)      │         │
+│ └────────────────┘ └────────────────┘ └────────────────┘         │
+│                                                                  │
+│ ┌──────────────────────────────────────────────────────────────┐│
+│ │ Holdings                                    [Filter] [Sort] ││
+│ ├──────────────────────────────────────────────────────────────┤│
+│ │ SYMBOL    │ NAME            │ QTY   │ PRICE   │ VALUE │ P&L ││
+│ ├──────────────────────────────────────────────────────────────┤│
+│ │ AAPL      │ Apple Inc.      │ 50    │ $178.50 │ $8,925│ $425││
+│ │ GOOGL     │ Google Cls A    │ 20    │ $140.25 │ $2,805│ $205││
+│ │ SPY       │ S&P 500 ETF    │ 100   │ $520.30 │$52,030│$2.3k││
+│ ├──────────────────────────────────────────────────────────────┤│
+│ │ OPTIONS                                                  │     │
+│ ├──────────────────────────────────────────────────────────────┤│
+│ │ TSLA 06/21 $250C │ Tesla Call │ 1 │ $12.50 │ $1,250 │ $250 ││
+│ │ NVDA 07/18 $900P │ Nvidia Put │ 5 │ $8.75  │ $4,375 │-$625 ││
+│ └──────────────────────────────────────────────────────────────┘│
+│                                                                  │
+│ ┌──────────────────────────────────────────────────────────────┐│
+│ │ Brokerages                                     Last Synced  ││
+│ ├──────────────────────────────────────────────────────────────┤│
+│ │ Fidelity          ● Active          10 holdings   2 hrs ago  ││
+│ │ Charles Schwab    ● Active          25 holdings   2 hrs ago  ││
+│ └──────────────────────────────────────────────────────────────┘│
+└──────────────────────────────────────────────────────────────────┘
+```
+
+### Options Display Format
+
+| Field | Description | Example |
+|-------|-------------|---------|
+| Contract | Ticker + Expiry + Strike + Type | TSLA 06/21 $250C |
+| Type | Call or Put | Call |
+| Expiration | Expiry date | Jun 21, 2025 |
+| Strike | Exercise price | $250.00 |
+| Contracts | Number of contracts | 1 |
+| Premium | Current price per share | $12.50 |
+| Market Value | Contracts × Premium × 100 | $1,250 |
+| Day Change | P&L today | +$50 |
+
+### API Endpoints
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/api/investments/holdings` | Get all holdings for user |
+| GET | `/api/investments/securities` | Get security details |
+| POST | `/api/investments/refresh` | Refresh investment data |
+
+### Empty State
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│ Portfolio                                    [Connect Brokerage]  │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│              ┌─────────────────────────────────┐                │
+│              │    📈                            │                │
+│              │                                 │                │
+│              │   No investment accounts yet    │                │
+│              │                                 │                │
+│              │  Connect your brokerage to see  │                │
+│              │  your stocks, ETFs, and options│                │
+│              │                                 │                │
+│              │  [Connect Brokerage Account]   │                │
+│              └─────────────────────────────────┘                │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+### Plaid Sandbox Testing
+
+Plaid Sandbox includes test investment accounts:
+
+| Institution | Type | Data |
+|-------------|------|------|
+| Plaid Brokerage | Brokerage | Stocks, ETFs, options |
+| Plaid Investment | IRA | Retirement holdings |
+
+**Test credentials in Sandbox:**
+- Access through Plaid Link like regular accounts
+- Holdings update daily (same as production)
+
+### Implementation Notes
+
+1. **Daily Updates**: Investment data refreshes once daily, not on-demand
+2. **OAuth Required**: Many brokerages need OAuth flow (Plaid handles this)
+3. **Separate Product**: Investments product is added alongside transactions
+4. **Read-Only**: Plaid does not support trade execution
+
+---
+
 ## Project Structure
 
 ```
@@ -329,6 +493,15 @@ lib/
 - [ ] Notifications
 - [ ] Trade execution (as per scalability requirement)
 
+### Phase 7: Investment Portfolio
+- [ ] Add investments product to Plaid Link
+- [ ] Create `/api/investments/holdings` endpoint
+- [ ] Create portfolio page with holdings display
+- [ ] Add database schema for investment holdings
+- [ ] Display option positions with strike/expiration
+- [ ] Show portfolio summary (total value, gain/loss)
+- [ ] Update sidebar with Portfolio nav
+
 ### Phase 3 Files
 
 | File | Purpose |
@@ -346,6 +519,17 @@ lib/
 | `app/(dashboard)/settings/page.tsx` | Full settings page with preferences |
 | `app/(dashboard)/page.tsx` | Enhanced dashboard with trends |
 | `components/ui/skeleton.tsx` | Loading skeleton components |
+
+### Phase 7 Files
+
+| File | Purpose |
+|------|---------|
+| `supabase/migrations/*_investment_holdings.sql` | Schema for holdings and securities |
+| `app/api/investments/holdings/route.ts` | GET investment holdings |
+| `app/api/investments/refresh/route.ts` | Refresh investment data |
+| `app/(dashboard)/portfolio/page.tsx` | Portfolio holdings page |
+| `components/Portfolio/HoldingsTable.tsx` | Holdings display component |
+| `components/Portfolio/OptionCard.tsx` | Option contract display |
 
 ### Supabase Dashboard Checklist
 

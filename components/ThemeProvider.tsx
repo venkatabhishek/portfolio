@@ -1,6 +1,5 @@
 'use client';
 
-import { ThemeProvider as NextThemesProvider } from 'next-themes';
 import { useEffect, useState } from 'react';
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
@@ -9,33 +8,32 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setMounted(true);
     
-    async function loadThemeFromSupabase() {
+    async function loadTheme() {
       try {
         const res = await fetch('/api/user/settings');
         const data = await res.json();
-        if (data.settings?.theme && data.settings.theme !== 'system') {
-          document.documentElement.classList.add(data.settings.theme);
+        const theme = data.settings?.theme;
+        
+        if (theme && theme !== 'system') {
+          document.documentElement.classList.add(theme);
+        } else {
+          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (prefersDark) {
+            document.documentElement.classList.add('dark');
+          }
         }
       } catch {
         // Ignore errors, fall back to system theme
       }
     }
     
-    loadThemeFromSupabase();
+    loadTheme();
   }, []);
 
+  // Prevent hydration mismatch by not rendering children until mounted
   if (!mounted) {
-    return <>{children}</>;
+    return null;
   }
 
-  return (
-    <NextThemesProvider
-      attribute="class"
-      defaultTheme="system"
-      enableSystem
-      disableTransitionOnChange
-    >
-      {children}
-    </NextThemesProvider>
-  );
+  return <>{children}</>;
 }

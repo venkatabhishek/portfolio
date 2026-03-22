@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
 import { createBrowserClient } from '@supabase/ssr';
-import { useTheme } from 'next-themes';
 import { 
   Palette, Globe, RefreshCw, Trash2, Download, 
   Check, AlertCircle, Sun, Moon, Monitor
@@ -51,7 +50,6 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const { setTheme } = useTheme();
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -112,7 +110,17 @@ export default function SettingsPage() {
       setMessage({ type: 'success', text: 'Settings saved' });
       
       if (key === 'theme') {
-        setTheme(value as string);
+        // Apply theme directly to DOM
+        const html = document.documentElement;
+        html.classList.remove('light', 'dark');
+        if (value !== 'system') {
+          html.classList.add(value as string);
+        } else {
+          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (prefersDark) {
+            html.classList.add('dark');
+          }
+        }
       }
     } catch (err) {
       setMessage({ 

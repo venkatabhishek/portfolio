@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
-import { Home, CreditCard, Repeat, Settings, LogOut, Loader2 } from "lucide-react";
+import { Home, CreditCard, Repeat, Settings, LogOut, Loader2, Briefcase } from "lucide-react";
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -42,6 +42,7 @@ export default function Sidebar() {
 
   const items = [
     { href: "/", label: "Dashboard", icon: <Home size={18} /> },
+    { href: "/portfolio", label: "Portfolio", icon: <Briefcase size={18} /> },
     { href: "/accounts", label: "Accounts", icon: <CreditCard size={18} /> },
     { href: "/transactions", label: "Transactions", icon: <Repeat size={18} /> },
     { href: "/settings", label: "Settings", icon: <Settings size={18} /> },
