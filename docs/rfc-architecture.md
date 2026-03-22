@@ -135,6 +135,7 @@ enum ConnectionStatus {
 |--------|----------|---------|
 | GET | `/api/transactions` | Paginated transactions with filtering |
 | GET | `/api/transactions/summary` | Aggregated stats |
+| POST | `/api/transactions/cleanup` | Delete transactions older than 12 months |
 
 **Query Parameters for `GET /api/transactions`:**
 
@@ -306,27 +307,33 @@ lib/
 - [x] Implement transaction sync with cursor (in exchange and refresh endpoints)
 - [x] Build transactions page with sorting/filtering
 - [x] Add refresh functionality
-- [ ] Add 60-second cooldown to refresh
-- [ ] Add 12-month retention policy / cleanup job
+- [x] Add 60-second cooldown to refresh
+- [x] Add 12-month retention policy / cleanup job
 
 ### Phase 4: Dashboard & Settings
 - [ ] Enhance dashboard with aggregated data
 - [ ] Build settings page
 - [ ] Add user preferences
 
-### Phase 5: Polish (Future)
+### Phase 5: Resilience (Future)
+- [ ] Retry with exponential backoff for Plaid calls
+- [ ] Circuit breaker per connection
+- [ ] Connection health status display
+- [ ] Graceful degradation (cached data on failure)
+- [ ] User-friendly error messages for all Plaid error codes
+
+### Phase 6: Polish (Future)
 - [ ] Webhook-driven updates (for real-time data)
 - [ ] Notifications
 - [ ] Trade execution (as per scalability requirement)
 
-### Phase 1 Files
+### Phase 3 Files
 
 | File | Purpose |
 |------|---------|
-| `middleware.ts` | Protects routes, redirects unauthenticated users |
-| `app/login/page.tsx` | Simple login page with Google OAuth button |
-| `lib/supabase.ts` | Supabase client setup |
-| `components/Sidebar.tsx` | Updated with user info + sign out |
+| `app/api/accounts/[id]/refresh/route.ts` | Refresh endpoint with 60s cooldown |
+| `app/api/transactions/cleanup/route.ts` | Cleanup endpoint for 12-month retention |
+| `supabase/migrations/20260321000000_add_refresh_cooldown.sql` | Adds cooldown column |
 
 ### Supabase Dashboard Checklist
 
@@ -520,3 +527,182 @@ SUPABASE_SERVICE_ROLE_KEY=xxx
 2. Implement background sync jobs
 3. Add more institutions/connection types
 4. Support trade execution (write operations)
+
+---
+
+## Resilience Patterns for External API Failures
+
+### Overview
+
+External APIs (Plaid, Supabase) can fail due to:
+- Transient network issues
+- Rate limiting
+- Planned maintenance
+- Bank-side credential changes
+- Institution outages
+
+The app must handle these gracefully without breaking user experience.
+
+### Plaid Error Categories
+
+| Category | Errors | Behavior |
+|----------|--------|----------|
+| **User Action Required** | `ITEM_LOGIN_REQUIRED`, `ITEM_LOCKED` | Prompt user to reconnect |
+| **Item Not Found** | `ITEM_NOT_FOUND` | Mark as disconnected |
+| **Rate Limited** | `RATE_LIMIT_EXCEEDED` | Exponential backoff, show message |
+| **Temporary** | `INTERNAL_SERVER_ERROR`, `PLANNED_MAINTENANCE` | Retry later, show cached data |
+| **Institution Issue** | Various institution errors | Log, notify if persistent |
+
+### Resilience Patterns to Implement
+
+#### 1. Retry with Exponential Backoff
+
+For transient errors (429, 5xx), retry with increasing delays:
+
+```
+Attempt 1: immediate
+Attempt 2: 1 second delay
+Attempt 3: 2 seconds delay
+Attempt 4: 4 seconds delay
+Max attempts: 3-5
+```
+
+**Applies to:** All Plaid API calls
+
+#### 2. Circuit Breaker Pattern
+
+When an endpoint fails repeatedly, stop calling it for a cooldown period:
+
+```
+Closed (normal) → Open (failing) → Half-Open (testing)
+                ↓
+    After N failures (e.g., 5)
+    For T duration (e.g., 60s)
+```
+
+**Applies to:** `/transactions/sync`, `/accounts/get`
+
+#### 3. Graceful Degradation
+
+When Plaid is unavailable:
+- Show cached balance data with "Last updated X ago" indicator
+- Show cached transactions
+- Disable refresh button with tooltip explaining status
+- Never show blank screens
+
+#### 4. Connection Health Status
+
+Track and display connection status per institution:
+
+| Status | Meaning | User Action |
+|--------|---------|--------------|
+| `ACTIVE` | Working normally | None |
+| `ERROR` | Requires attention | Prompt to reconnect |
+| `DISCONNECTED` | No longer valid | Remove from UI |
+
+#### 5. Timeout Handling
+
+Set reasonable timeouts to prevent hanging:
+- Plaid API calls: 30 second timeout
+- On timeout: return cached data, log error
+
+### User-Facing Behavior
+
+#### When Refresh Fails
+
+1. Check error type
+2. If transient (rate limit, timeout): show "Temporarily unavailable, try again in X seconds"
+3. If user action needed: show "Your bank requires re-authentication" with reconnect button
+4. If institution issue: show "Bank connection issue" with retry button
+5. Always display last successful data with timestamp
+
+#### Connection Status UI
+
+```
+┌─────────────────────────────────────────┐
+│ Chase Bank                      [Active] │
+│ ••••4521  Checking                    ✓ │
+│ Last synced: 5 minutes ago    [Refresh] │
+└─────────────────────────────────────────┘
+
+┌─────────────────────────────────────────┐
+│ Bank of America              [Error ⚠] │
+│ ••••7890  Savings                      │
+│ Requires re-authentication    [Reconnect]│
+└─────────────────────────────────────────┘
+```
+
+### Implementation Checklist
+
+- [ ] Add retry wrapper with exponential backoff for Plaid calls
+- [ ] Add circuit breaker per connection
+- [ ] Update connection status when errors occur
+- [ ] Add "last_synced" display on accounts page
+- [ ] Disable refresh button during cooldown/errors
+- [ ] Add user-friendly error messages based on Plaid error codes
+- [ ] Add Sentry/logging for Plaid errors (without PII)
+
+### Testing Strategy
+
+#### Plaid Sandbox Error Simulation
+
+Use Plaid Sandbox's error injection:
+- `user_insufficient` → simulate credential issues
+- `user_expired` → simulate expired credentials
+- Create test items in various error states
+
+#### Manual Testing Checklist
+
+| Scenario | Expected Behavior |
+|----------|------------------|
+| Refresh during Plaid outage | Show cached data, retry message |
+| `ITEM_LOGIN_REQUIRED` | Show reconnect prompt |
+| Rate limited | Show cooldown message |
+| Bank disconnects access | Update status, prompt user |
+| Slow response (>30s) | Timeout, show cached data |
+
+### Logging & Monitoring (Phase 5+)
+
+Track these metrics:
+- Refresh success/failure rate per institution
+- Average time to reconnect
+- Error code frequency
+- User-initiated reconnect rate
+
+---
+
+## Testing Strategy
+
+### Test Environments
+
+| Environment | Use Case |
+|-------------|----------|
+| **Plaid Sandbox** | Development, integration tests |
+| **Plaid Development** | Real bank testing (limited to 100 items) |
+| **Plaid Production** | Live users |
+
+### Testing Types
+
+#### Unit Tests
+- Error code mapping to user messages
+- Retry logic behavior
+- Date range filtering logic
+
+#### Integration Tests (Plaid Sandbox)
+- Full link flow
+- Refresh cycle
+- Multiple institutions
+
+#### Manual QA
+- Error state handling
+- Reconnection flows
+- Edge cases with sandbox credentials
+
+### Plaid Sandbox Test Credentials
+
+| Username | Behavior |
+|----------|----------|
+| `user_good` | Successful login |
+| `user_insufficient` | Insufficient credentials error |
+| `user_expired` | Expired credentials |
+| `user_disputed` | Account in dispute |

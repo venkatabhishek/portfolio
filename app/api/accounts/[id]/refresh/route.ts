@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { plaidClient } from '@/lib/plaid';
+import type { Transaction } from 'plaid';
 
 export async function POST(
   request: NextRequest,
@@ -46,6 +47,16 @@ export async function POST(
       return NextResponse.json({ error: 'Connection not found' }, { status: 404 });
     }
 
+    // Check cooldown (60 seconds)
+    const cooldownUntil = connection.refresh_cooldown_until;
+    if (cooldownUntil && new Date(cooldownUntil) > new Date()) {
+      const secondsLeft = Math.ceil((new Date(cooldownUntil).getTime() - Date.now()) / 1000);
+      return NextResponse.json(
+        { error: 'Refresh cooldown active', secondsLeft },
+        { status: 429 }
+      );
+    }
+
     // Refresh accounts from Plaid
     const accountsResponse = await plaidClient.accountsGet({
       access_token: connection.access_token,
@@ -71,7 +82,7 @@ export async function POST(
     // Sync transactions
     let hasMore = true;
     let cursor = connection.cursor || undefined;
-    const allTransactions: any[] = [];
+    const allTransactions: Transaction[] = [];
 
     while (hasMore) {
       const txResponse = await plaidClient.transactionsSync({
@@ -120,12 +131,14 @@ export async function POST(
       });
     }
 
-    // Update connection with new cursor and last_synced
+    // Update connection with new cursor, last_synced, and cooldown
+    const cooldownTime = new Date(Date.now() + 60 * 1000).toISOString();
     await supabase
       .from('plaid_connections')
       .update({
         last_synced: new Date().toISOString(),
         cursor,
+        refresh_cooldown_until: cooldownTime,
       })
       .eq('id', id);
 
