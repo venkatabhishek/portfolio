@@ -105,6 +105,9 @@ CREATE POLICY "Users can insert own connections" ON public.plaid_connections
 CREATE POLICY "Users can delete own connections" ON public.plaid_connections
     FOR DELETE USING (auth.uid() = user_id);
 
+CREATE POLICY "Users can update own connections" ON public.plaid_connections
+    FOR UPDATE USING (auth.uid() = user_id);
+
 -- Accounts: users can only see accounts through their connections
 CREATE POLICY "Users can view own accounts" ON public.accounts
     FOR SELECT USING (

@@ -311,9 +311,11 @@ lib/
 - [x] Add 12-month retention policy / cleanup job
 
 ### Phase 4: Dashboard & Settings
-- [ ] Enhance dashboard with aggregated data
-- [ ] Build settings page
-- [ ] Add user preferences
+- [x] Enhance dashboard with aggregated data
+- [x] Build settings page
+- [x] Add user preferences
+- [x] Add skeleton loading states
+- [x] Improve empty states with guided onboarding
 
 ### Phase 5: Resilience (Future)
 - [ ] Retry with exponential backoff for Plaid calls
@@ -334,6 +336,16 @@ lib/
 | `app/api/accounts/[id]/refresh/route.ts` | Refresh endpoint with 60s cooldown |
 | `app/api/transactions/cleanup/route.ts` | Cleanup endpoint for 12-month retention |
 | `supabase/migrations/20260321000000_add_refresh_cooldown.sql` | Adds cooldown column |
+
+### Phase 4 Files
+
+| File | Purpose |
+|------|---------|
+| `app/api/user/settings/route.ts` | GET/PATCH user settings |
+| `app/api/transactions/recent/route.ts` | Recent transactions for dashboard |
+| `app/(dashboard)/settings/page.tsx` | Full settings page with preferences |
+| `app/(dashboard)/page.tsx` | Enhanced dashboard with trends |
+| `components/ui/skeleton.tsx` | Loading skeleton components |
 
 ### Supabase Dashboard Checklist
 

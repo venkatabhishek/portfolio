@@ -81,18 +81,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Set initial last_synced immediately
+    await supabase
+      .from('plaid_connections')
+      .update({ last_synced: new Date().toISOString() })
+      .eq('id', connection.id);
+
     // Fetch and store accounts
     const accountsResponse = await plaidClient.accountsGet({
       access_token: accessToken,
     });
 
     const accounts = accountsResponse.data.accounts;
-
-    // Update connection with last synced time
-    await supabase
-      .from('plaid_connections')
-      .update({ last_synced: new Date().toISOString() })
-      .eq('id', connection.id);
 
     if (accounts && accounts.length > 0) {
       const accountsToInsert = accounts.map((account: any) => ({
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Fetch initial transactions
+    // Fetch initial transactions and wait for completion
     await fetchTransactions(supabase, connection.id, accessToken);
 
     return NextResponse.json({ 
